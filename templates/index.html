@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Church Offering & Tithe Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 font-sans text-slate-800">
+
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Flash Feedback Notifications -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2">
+          {% for category, msg in messages %}
+            <div class="p-3 text-xs md:text-sm rounded-xl flex items-center justify-between border {{ 'bg-red-50 text-red-700 border-red-200' if category == 'error' else 'bg-emerald-50 text-emerald-700 border-emerald-200' if category == 'success' else 'bg-blue-50 text-blue-700 border-blue-200' }}">
+              <span>{{ msg }}</span>
+              <button onclick="this.parentElement.remove()" class="text-xs font-bold uppercase ml-4 opacity-60 hover:opacity-100">✕</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Top Hero Header (Matching Shopping Stock Tracker Aesthetic) -->
+    <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center space-x-3">
+          <svg class="w-8 h-8 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <h1 class="text-2xl font-bold tracking-tight">Church Offering Tracker</h1>
+        </div>
+        <p class="text-indigo-100 text-sm mt-1 ml-11">Manage tithes, Sunday offerings, project funds & disbursements</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Live Status Pill -->
+        <div class="flex items-center space-x-2 bg-white/10 px-3.5 py-1.5 rounded-xl backdrop-blur-sm border border-white/20">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs uppercase font-semibold tracking-wider">Live Treasury</span>
+        </div>
+
+        <!-- User Profile & Sign Out -->
+        <div class="flex items-center space-x-2 bg-black/20 px-3.5 py-1.5 rounded-xl border border-white/10">
+          <span class="text-xs text-indigo-100">
+            Hi, <strong>{{ user_name if user_name else 'Member' }}</strong>
+          </span>
+          <span class="text-white/40">|</span>
+          <a href="{{ url_for('logout') }}" class="text-xs text-amber-300 hover:text-amber-200 font-semibold transition">
+            Sign Out
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Fund Balance Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center space-x-2">
+          <span class="text-indigo-600 font-bold text-lg">❖</span>
+          <h2 class="text-lg font-bold text-slate-800">Current Fund Balances</h2>
+        </div>
+        <div class="sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none">
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">TOTAL TREASURY HOLDINGS</p>
+          <p class="text-2xl font-black text-slate-900">KSh {{ "{:,.2f}".format(total_coffers) }}</p>
+        </div>
+      </div>
+
+      <!-- Table Structure -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/75 border-b border-slate-100">
+              <th class="py-3.5 px-6">FUND CATEGORY</th>
+              <th class="py-3.5 px-6 text-right">TOTAL INFLOW</th>
+              <th class="py-3.5 px-6 text-right">DISBURSEMENTS</th>
+              <th class="py-3.5 px-6 text-right">NET BALANCE</th>
+              <th class="py-3.5 px-6 text-center">STATUS</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-sm">
+            {% for f in funds %}
+            <tr class="hover:bg-slate-50/75 transition-colors">
+              <td class="py-4 px-6 font-semibold text-slate-800">
+                {{ f['name'] }}
+              </td>
+              <td class="py-4 px-6 text-right font-medium text-emerald-600">
+                +{{ "{:,.2f}".format(f['total_in']) }}
+              </td>
+              <td class="py-4 px-6 text-right font-medium text-rose-500">
+                -{{ "{:,.2f}".format(f['total_out']) }}
+              </td>
+              <td class="py-4 px-6 text-right font-black text-slate-900 text-base">
+                KSh {{ "{:,.2f}".format(f['balance']) }}
+              </td>
+              <td class="py-4 px-6 text-center">
+                {% if f['balance'] > 0 %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ✓ Active Fund
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                  Zero Balance
+                </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Quick Record Offering / Disbursement Form -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
+        <span class="text-indigo-600 font-bold">＋</span>
+        <span>Record Offering, Tithe or Expense</span>
+      </h3>
+
+      <form action="{{ url_for('record_transaction') }}" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Fund Account</label>
+          <select name="category_id" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            {% for f in funds %}
+            <option value="{{ f['id'] }}">{{ f['name'] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Transaction Type</label>
+          <select name="transaction_type" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="contribution">Offering / Tithe (Inflow)</option>
+            <option value="disbursement">Disbursement / Expense (Outflow)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (KSh)</label>
+          <input type="number" step="0.01" name="amount" placeholder="e.g. 2000" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Payment Channel</label>
+          <select name="payment_method" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="M-Pesa">M-Pesa / Paybill</option>
+            <option value="Cash">Cash Envelope</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Cheque">Cheque</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Reference / M-Pesa Code / Env #</label>
+          <input type="text" name="reference_no" placeholder="e.g. QKJ892LK10 or Envelope 12" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Date</label>
+          <input type="date" name="service_date" value="{{ today }}" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Purpose / Notes (Optional)</label>
+          <input type="text" name="notes" placeholder="e.g. Sunday first service collection or sound equipment cable repair" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="md:col-span-3 flex justify-end pt-2">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-lg shadow-sm transition">
+            Save Entry
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Recent Transactions Audit Trail -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+          <span class="text-indigo-600">📋</span>
+          <span>Recent Treasury Activity</span>
+        </h3>
+        <span class="text-xs text-slate-400">Last 10 Records</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/75 border-b border-slate-100">
+              <th class="py-3 px-6">DATE</th>
+              <th class="py-3 px-6">FUND</th>
+              <th class="py-3 px-6">RECORDED BY</th>
+              <th class="py-3 px-6">CHANNEL & REF</th>
+              <th class="py-3 px-6 text-right">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for t in recent_transactions %}
+            <tr class="hover:bg-slate-50/50">
+              <td class="py-3 px-6 text-slate-500 whitespace-nowrap">{{ t['service_date'] }}</td>
+              <td class="py-3 px-6 font-medium text-slate-800">{{ t['category_name'] }}</td>
+              <td class="py-3 px-6 text-slate-600">{{ t['member_name'] if t['member_name'] else 'Treasurer' }}</td>
+              <td class="py-3 px-6 text-slate-500">
+                <span class="font-medium text-slate-700">{{ t['payment_method'] }}</span>
+                {% if t['reference_no'] %}
+                <span class="text-xs text-slate-400">({{ t['reference_no'] }})</span>
+                {% endif %}
+              </td>
+              <td class="py-3 px-6 text-right font-bold whitespace-nowrap {{ 'text-emerald-600' if t['transaction_type'] == 'contribution' else 'text-rose-500' }}">
+                {{ '+' if t['transaction_type'] == 'contribution' else '-' }}KSh {{ "{:,.2f}".format(t['amount']) }}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="py-6 px-6 text-center text-slate-400 text-xs">
+                No transactions recorded yet. Use the form above to add an entry.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
