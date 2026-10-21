@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription & Billing — Church Treasury Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 antialiased p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+
+        <!-- Top Header & Exit -->
+        <div class="flex items-center justify-between">
+            <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-credit-card text-indigo-600"></i>
+                <span>Subscription & Ministry Plan</span>
+            </h1>
+            <a href="{{ url_for('role_dispatcher') }}" class="text-xs text-slate-600 hover:text-slate-900 font-medium transition flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Return to Dashboard</span>
+            </a>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-3.5 text-xs rounded-xl border flex items-start gap-2 {% if category == 'error' %}bg-rose-50 border-rose-200 text-rose-700{% elif category == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-700{% else %}bg-blue-50 border-blue-200 text-blue-700{% endif %}">
+                        <i class="fa-solid fa-circle-info mt-0.5"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Current Plan Status Banner -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <p class="text-xs uppercase font-semibold text-slate-400 tracking-wider">Current Organization Status</p>
+                <div class="flex items-center gap-3 mt-1.5">
+                    <span class="text-2xl font-black text-slate-900">
+                        {{ subscription.plan_tier if subscription else 'TRIAL' }} PLAN
+                    </span>
+                    <span class="text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wide
+                        {% if subscription and subscription.status == 'ACTIVE' %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">
+                        {{ subscription.status if subscription else 'EXPIRED' }}
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                    {% if subscription and subscription.is_trial %}
+                        30-Day Free Trial Mode
+                    {% else %}
+                        Billed {{ subscription.billing_cycle if subscription else 'MONTHLY' }}
+                    {% endif %}
+                </p>
+            </div>
+            <div class="text-left md:text-right border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                <p class="text-xs uppercase font-semibold text-slate-400 tracking-wider">Access Valid Until</p>
+                <p class="text-lg font-bold text-slate-800 mt-1 flex items-center md:justify-end gap-1.5">
+                    <i class="fa-regular fa-calendar-check text-indigo-500"></i>
+                    <span>{{ subscription.expires_at if subscription else 'Immediate Action Required' }}</span>
+                </p>
+                {% if in_grace %}
+                    <span class="text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded inline-block mt-1">
+                        {{ days_left_in_grace }} day(s) left in grace period
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- M-Pesa Payment Destination Guide -->
+        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-emerald-100 pb-3">
+                <div class="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+                    <i class="fa-solid fa-mobile-screen-button text-emerald-600 text-base"></i>
+                    <span>Official M-Pesa Payment Channels</span>
+                </div>
+                <span class="text-[11px] bg-emerald-600 text-white font-semibold px-2 py-0.5 rounded">Safaricom M-Pesa</span>
+            </div>
+
+            <p class="text-xs text-emerald-800 leading-relaxed">
+                Send the subscription fee using any of the approved channels below. After completing the transaction on your phone, paste the Safaricom confirmation code (e.g., <strong class="font-mono">QK89123XZ</strong>) into your selected plan below.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <!-- Option 1: Buy Goods -->
+                <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-xs">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Option 1: Buy Goods Till</span>
+                    <p class="text-xs text-slate-500 mt-0.5">Lipa na M-Pesa &rarr; Buy Goods</p>
+                    <div class="text-lg font-black text-emerald-700 tracking-wide mt-2 font-mono">
+                        9876543
+                    </div>
+                    <span class="text-[11px] text-slate-500 block mt-0.5">Name: <strong>Church Treasury Portal</strong></span>
+                </div>
+
+                <!-- Option 2: Paybill -->
+                <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-xs">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Option 2: Paybill</span>
+                    <p class="text-xs text-slate-500 mt-0.5">Lipa na M-Pesa &rarr; Paybill</p>
+                    <div class="text-lg font-black text-emerald-700 tracking-wide mt-2 font-mono">
+                        400200
+                    </div>
+                    <span class="text-[11px] text-slate-500 block mt-0.5">Account: <strong>CHURCH-NAME</strong></span>
+                </div>
+
+                <!-- Option 3: Direct Phone / Send Money -->
+                <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-xs">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Option 3: Direct Send Money</span>
+                    <p class="text-xs text-slate-500 mt-0.5">M-Pesa &rarr; Send Money</p>
+                    <div class="text-lg font-black text-emerald-700 tracking-wide mt-2 font-mono">
+                        0701255579
+                    </div>
+                    <span class="text-[11px] text-slate-500 block mt-0.5">Name: <strong>Ronny Odhiambo</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing & Renewal Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Standard Monthly Plan -->
+            <div class="bg-white rounded-2xl border-2 border-slate-200 hover:border-indigo-400 transition-all p-6 flex flex-col justify-between shadow-sm">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded">
+                            Standard Monthly
+                        </span>
+                        <span class="text-xs text-slate-400 font-medium">Billed every 30 days</span>
+                    </div>
+
+                    <div class="mt-4">
+                        <span class="text-3xl font-black text-slate-900">KES 1,500</span>
+                        <span class="text-xs font-medium text-slate-500">/ month</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">
+                        Complete access for your church leadership team with no transaction entry caps.
+                    </p>
+
+                    <div class="border-t border-slate-100 my-5"></div>
+
+                    <ul class="text-xs text-slate-600 space-y-2.5">
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Unlimited giving entries for clerks</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Treasurer audit verification & batch locking</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Pastor executive analytics & fund share charts</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Standard email support</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="POST" action="{{ url_for('billing') }}" class="mt-6 pt-5 border-t border-slate-100 space-y-3">
+                    <input type="hidden" name="plan_tier" value="STANDARD">
+                    <input type="hidden" name="billing_cycle" value="MONTHLY">
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">M-Pesa Confirmation Code *</label>
+                        <input type="text" name="mpesa_code" placeholder="e.g. QK89123XZ" required
+                               class="w-full text-xs uppercase tracking-wider font-mono font-bold px-3 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition">
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-2.5 rounded-lg text-xs shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-lock text-[11px]"></i>
+                        <span>Activate 30-Day Standard Plan</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Annual Ministry Plan -->
+            <div class="bg-white rounded-2xl border-2 border-indigo-600 p-6 flex flex-col justify-between shadow-lg relative">
+                <span class="absolute -top-3 right-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
+                    Save KES 3,000 / Year
+                </span>
+
+                <div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded">
+                            Annual Ministry Plan
+                        </span>
+                        <span class="text-xs text-emerald-600 font-bold">12 Full Months</span>
+                    </div>
+
+                    <div class="mt-4">
+                        <span class="text-3xl font-black text-slate-900">KES 15,000</span>
+                        <span class="text-xs font-medium text-slate-500">/ year</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">
+                        Year-round treasury oversight without the hassle of recurring monthly renewal interruptions.
+                    </p>
+
+                    <div class="border-t border-slate-100 my-5"></div>
+
+                    <ul class="text-xs text-slate-600 space-y-2.5">
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span><strong>Everything included in Standard</strong></span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Continuous 365-day operational uptime</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Annual financial ledger summaries</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                            <span>Dedicated priority technical support</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="POST" action="{{ url_for('billing') }}" class="mt-6 pt-5 border-t border-slate-100 space-y-3">
+                    <input type="hidden" name="plan_tier" value="PREMIUM">
+                    <input type="hidden" name="billing_cycle" value="ANNUAL">
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">M-Pesa Confirmation Code *</label>
+                        <input type="text" name="mpesa_code" placeholder="e.g. QK89123XZ" required
+                               class="w-full text-xs uppercase tracking-wider font-mono font-bold px-3 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 focus:bg-white transition">
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-2.5 rounded-lg text-xs shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-crown text-[11px]"></i>
+                        <span>Activate 1-Year Ministry Plan</span>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

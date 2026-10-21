@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clerk Collection Entry — Church Treasury Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 antialiased p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+
+        <!-- Universal Cross-Role Switcher Header (Approach 1) -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-xs">
+                    ✝
+                </div>
+                <div>
+                    <h1 class="text-sm font-black text-slate-800 uppercase tracking-tight">
+                        {{ session.get('church_name', 'ALL SAINTS CATHEDRAL') }}
+                    </h1>
+                    <p class="text-[11px] text-slate-400 font-medium">
+                        Active User: <strong class="text-slate-700">{{ session.get('user_name', 'Church Staff') }}</strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Role View Switcher Tabs -->
+            <div class="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
+                <a href="{{ url_for('clerk_dashboard') }}" 
+                   class="px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 bg-white text-indigo-700 shadow-xs">
+                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                    <span>1. Clerk (Baskets)</span>
+                </a>
+                <a href="{{ url_for('treasurer_dashboard') }}" 
+                   class="px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-500 hover:text-slate-900">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                    <span>2. Treasurer (Audit & Expenses)</span>
+                </a>
+                <a href="{{ url_for('pastor_dashboard') }}" 
+                   class="px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 text-slate-500 hover:text-slate-900">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>3. Pastor (Overview)</span>
+                </a>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+                <a href="{{ url_for('billing') }}" class="text-xs font-semibold px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl transition">
+                    <i class="fa-solid fa-shield-halved mr-1 text-indigo-500"></i> Plan
+                </a>
+                <a href="{{ url_for('logout') }}" class="text-xs font-semibold px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl transition">
+                    <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Sign Out
+                </a>
+            </div>
+        </div>
+
+        <!-- Real-Time Treasury Overview (Inflow vs Outflow vs Net) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Service Date</span>
+                <div class="text-base font-bold text-slate-800 mt-1 flex items-center gap-2">
+                    <i class="fa-regular fa-calendar text-indigo-500"></i>
+                    <span>{{ target_date }}</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 block">Total Collections (In)</span>
+                <div class="text-2xl font-black text-emerald-600 mt-1 font-mono">
+                    KES {{ "{:,.2f}".format(total_today|default(0.0)) }}
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-rose-500 block">Expenses Disbursed (Out)</span>
+                <div class="text-2xl font-black text-rose-600 mt-1 font-mono">
+                    - KES {{ "{:,.2f}".format(total_expenses_today|default(0.0)) }}
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Net Daily Balance</span>
+                <div class="text-2xl font-black {% if (net_today|default(0.0)) >= 0 %}text-slate-900{% else %}text-rose-700{% endif %} mt-1 font-mono">
+                    KES {{ "{:,.2f}".format(net_today|default(0.0)) }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Totals by Category Breakdown Strip -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+                    <span>Totals by Offering Category</span>
+                </h3>
+                <span class="text-[11px] text-slate-400 font-medium">Aggregated Basket Tallies</span>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {% for key, label in categories %}
+                    {% set cat_total = summary_by_category.get(key, 0.0) %}
+                    <div class="p-3 rounded-xl border transition {% if cat_total > 0 %}border-emerald-200 bg-emerald-50/40{% else %}border-slate-100 bg-slate-50/60 opacity-60{% endif %}">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block truncate" title="{{ label }}">
+                            {{ key | replace('_', ' ') }}
+                        </span>
+                        <div class="text-sm font-black mt-1 font-mono {% if cat_total > 0 %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                            KES {{ "{:,.2f}".format(cat_total) }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Main Workspace: Entry Form & Live Logs Table -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Rapid Basket Entry Form -->
+            <div class="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-indigo-600"></i>
+                        <span>Offering Basket Entry</span>
+                    </h2>
+                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold uppercase">Real-time</span>
+                </div>
+
+                <div id="statusAlert" class="hidden p-3 text-xs rounded-xl border"></div>
+
+                <form id="offeringForm" class="space-y-4">
+                    <input type="hidden" id="service_date" value="{{ target_date }}">
+
+                    <!-- Type of Offering -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Type of Offering *</label>
+                        <select id="category" required
+                                class="w-full text-xs px-3 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-bold text-slate-800">
+                            {% for key, label in categories %}
+                                <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Service Session -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Service Session *</label>
+                        <select id="service_type" required
+                                class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-700">
+                            <option value="FIRST_SERVICE">1st Service / Morning</option>
+                            <option value="SECOND_SERVICE">2nd Service / Main</option>
+                            <option value="THIRD_SERVICE">3rd Service / Youth</option>
+                            <option value="MIDWEEK">Midweek / Wednesday Service</option>
+                            <option value="SPECIAL">Special Conference / Kesha</option>
+                        </select>
+                    </div>
+
+                    <!-- Amount & Payment Channel -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Amount (KES) *</label>
+                            <input type="number" step="0.01" id="amount" placeholder="e.g. 15000" required
+                                   class="w-full text-sm font-black text-emerald-700 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Payment Channel *</label>
+                            <select id="payment_method" required
+                                    class="w-full text-xs px-3 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-700">
+                                <option value="CASH">Physical Cash</option>
+                                <option value="MPESA">M-Pesa Till / Paybill</option>
+                                <option value="BANK_TRANSFER">Bank Direct / Slip</option>
+                                <option value="CHEQUE">Bank Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Transaction Ref -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Transaction Ref / Cheque No. (Optional)</label>
+                        <input type="text" id="reference_code" placeholder="e.g. QK89123XZ (Optional for cash)"
+                               class="w-full text-xs uppercase px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-mono">
+                    </div>
+
+                    <!-- Counting Notes -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Basket / Batch Notes (Optional)</label>
+                        <input type="text" id="notes" placeholder="e.g. 'Basket 3' or 'Combined Tithe Envelopes'"
+                               class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                    </div>
+
+                    <button type="submit" id="saveBtn"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Save Record</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Service Logs Table -->
+            <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+                <div>
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-500"></i> Today's Service Logs
+                        </h3>
+                        <span class="text-[11px] text-slate-400">Live Service Records</span>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[520px]">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-3.5">Offering Type</th>
+                                    <th class="p-3.5">Session</th>
+                                    <th class="p-3.5">Method</th>
+                                    <th class="p-3.5 text-right">Amount (KES)</th>
+                                    <th class="p-3.5 text-center">Batch Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for r in records %}
+                                    <tr class="hover:bg-slate-50/80 transition">
+                                        <td class="p-3.5 font-bold text-slate-800">
+                                            {{ r.category | replace('_', ' ') }}
+                                            {% if r.notes %}
+                                                <span class="block text-[10px] text-slate-400 font-normal">{{ r.notes }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="p-3.5 text-slate-600">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100">
+                                                {{ r.service_type | replace('_', ' ') }}
+                                            </span>
+                                        </td>
+                                        <td class="p-3.5 font-medium text-slate-600">
+                                            {{ r.payment_method }}
+                                            {% if r.reference_code %}
+                                                <span class="block text-[10px] font-mono text-indigo-600">{{ r.reference_code }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="p-3.5 text-right font-black text-emerald-600 font-mono text-sm">
+                                            {{ "{:,.2f}".format(r.amount|default(0.0)) }}
+                                        </td>
+                                        <td class="p-3.5 text-center">
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase
+                                                {% if r.batch_status == 'LOCKED' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                                {{ r.batch_status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="p-12 text-center text-slate-400">
+                                            <i class="fa-solid fa-inbox text-3xl mb-2 block opacity-40"></i>
+                                            No records logged yet for today's service.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Footer Summary Strip -->
+                <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+                    <span class="text-slate-500 font-medium">Grand Service Total:</span>
+                    <strong class="text-base text-slate-900 font-black font-mono">KES {{ "{:,.2f}".format(total_today|default(0.0)) }}</strong>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- AJAX Post Handler -->
+    <script>
+        document.getElementById('offeringForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const saveBtn = document.getElementById('saveBtn');
+            const alertBox = document.getElementById('statusAlert');
+
+            const payload = {
+                service_date: document.getElementById('service_date').value,
+                category: document.getElementById('category').value,
+                service_type: document.getElementById('service_type').value,
+                amount: document.getElementById('amount').value,
+                payment_method: document.getElementById('payment_method').value,
+                reference_code: document.getElementById('reference_code').value,
+                notes: document.getElementById('notes').value
+            };
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const response = await fetch("{{ url_for('record_entry') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alertBox.className = 'p-3 text-xs rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-800 flex items-center gap-2';
+                    alertBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> Record saved successfully!';
+                    alertBox.classList.remove('hidden');
+
+                    document.getElementById('amount').value = '';
+                    document.getElementById('reference_code').value = '';
+                    document.getElementById('notes').value = '';
+                    document.getElementById('amount').focus();
+
+                    setTimeout(() => window.location.reload(), 600);
+                } else {
+                    alertBox.className = 'p-3 text-xs rounded-xl border bg-rose-50 border-rose-200 text-rose-800 flex items-center gap-2';
+                    alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${result.error || 'Failed to save record.'}`;
+                    alertBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                alertBox.className = 'p-3 text-xs rounded-xl border bg-rose-50 border-rose-200 text-rose-800 flex items-center gap-2';
+                alertBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Network error.';
+                alertBox.classList.remove('hidden');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Save Record';
+            }
+        });
+    </script>
+
+</body>
+</html>

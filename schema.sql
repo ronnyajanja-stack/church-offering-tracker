@@ -1,49 +1,135 @@
--- ====================================================================
--- CHURCH OFFERING & TITHE TRACKER DATABASE SCHEMA
--- Compatible with SQLite, Flask, and Google OAuth 2.0
--- ====================================================================
+-- =============================================================================
+-- CHURCH TREASURY PORTAL - DATABASE SCHEMA
+-- SQLite Compatible
+-- Supports Inflow (Basket/Fund Collections) and Outflow (Church Expenses)
+-- =============================================================================
 
--- 1. Users Table (Supports local email/phone signup and Google SSO)
-CREATE TABLE IF NOT EXISTS users (
+PRAGMA foreign_keys = ON;
+
+-- -----------------------------------------------------------------------------
+-- 1. CHURCH ORGANIZATIONS TABLE
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS churches;
+
+CREATE TABLE churches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    full_name TEXT NOT NULL,
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -----------------------------------------------------------------------------
+-- 2. USERS & ROLES TABLE
+-- Roles: CLERK, TREASURER, PASTOR, ADMIN
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    church_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    phone TEXT UNIQUE,                     -- Nullable initially for Google SSO sign-ins
-    password_hash TEXT,                    -- Nullable for Google SSO sign-ins
-    google_id TEXT UNIQUE,                 -- Google Subject Identifier (sub ID)
-    role TEXT CHECK(role IN ('admin', 'treasurer', 'member')) DEFAULT 'member',
-    reset_token TEXT,                      -- Password recovery token
-    reset_token_expiry TIMESTAMP,          -- Token expiration timestamp
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    phone TEXT,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'CLERK',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE
 );
 
--- 2. Fund Categories (Tithes, General Offering, Project Funds, etc.)
-CREATE TABLE IF NOT EXISTS fund_categories (
+-- -----------------------------------------------------------------------------
+-- 3. CHURCH SUBSCRIPTIONS & GRACE PERIOD TABLE
+-- Plans: TRIAL, STANDARD, PREMIUM
+-- Cycles: MONTHLY, ANNUAL
+-- Status: ACTIVE, EXPIRED, CANCELLED
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS church_subscriptions;
+
+CREATE TABLE church_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    description TEXT
+    church_id INTEGER NOT NULL,
+    plan_tier TEXT NOT NULL DEFAULT 'TRIAL',
+    billing_cycle TEXT NOT NULL DEFAULT 'MONTHLY',
+    is_trial INTEGER NOT NULL DEFAULT 1,
+    trial_ends_at DATE,
+    expires_at DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE
 );
 
--- 3. Financial Transactions Table (Inflows & Outflows)
-CREATE TABLE IF NOT EXISTS transactions (
+-- -----------------------------------------------------------------------------
+-- 4. AGGREGATE GIVING RECORDS (INFLOW / OFFERING COLLECTIONS)
+-- No individual member tracking; captures counted offering categories
+-- Categories: NORMAL_OFFERING, TITHE, THANKSGIVING, DEVELOPMENT,
+--             SUNDAY_SCHOOL, MISSIONS, WELFARE, FIRST_FRUITS, OTHER
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS giving_records;
+
+CREATE TABLE giving_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    category_id INTEGER NOT NULL,
-    transaction_type TEXT CHECK(transaction_type IN ('contribution', 'disbursement')) NOT NULL,
-    amount REAL NOT NULL,
-    payment_method TEXT CHECK(payment_method IN ('Cash', 'M-Pesa', 'Bank Transfer', 'Cheque')) NOT NULL,
-    reference_no TEXT,                     -- M-Pesa transaction code, bank reference, or envelope #
+    church_id INTEGER NOT NULL,
+    recorded_by_user_id INTEGER NOT NULL,
     service_date DATE NOT NULL,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL,
-    FOREIGN KEY (category_id) REFERENCES fund_categories (id) ON DELETE CASCADE
+    service_type TEXT NOT NULL DEFAULT 'FIRST_SERVICE', -- FIRST_SERVICE, SECOND_SERVICE, MIDWEEK, SPECIAL
+    category TEXT NOT NULL,                             -- TITHE, NORMAL_OFFERING, THANKSGIVING, etc.
+    payment_method TEXT NOT NULL DEFAULT 'CASH',        -- CASH, MPESA, BANK_TRANSFER, CHEQUE
+    reference_code TEXT,                                -- M-Pesa receipt, cheque number, or envelope ref
+    amount DECIMAL(12, 2) NOT NULL,
+    notes TEXT,                                         -- Batch / counting details
+    batch_status TEXT NOT NULL DEFAULT 'PENDING',       -- PENDING, LOCKED
+    reconciled_by_user_id INTEGER,
+    reconciled_at DATETIME,
+    bank_slip_ref TEXT,                                 -- Deposit slip reference when banked
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE,
+    FOREIGN KEY (recorded_by_user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (reconciled_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
 );
 
--- 4. Initial Seed Data for Core Church Funds
-INSERT OR IGNORE INTO fund_categories (id, name, description) VALUES
-(1, 'Tithes', 'Regular individual tithes (10%)'),
-(2, 'Sunday General Offering', 'Main sanctuary and mid-week service collections'),
-(3, 'Building & Development Fund', 'Church infrastructure, sanctuary expansion, and capital projects'),
-(4, 'Missions & Outreach', 'Evangelism, benevolence, and community outreach'),
-(5, 'Youth & Children Ministry', 'Sunday school and youth activities');
+-- -----------------------------------------------------------------------------
+-- 5. EXPENSES & DISBURSAL RECORDS (OUTFLOW / EXPENDITURES)
+-- Tracks operational payments, pastoral honoraria, utilities, benevolence, etc.
+-- Categories: HONORARIUM, UTILITIES, RENT_FACILITY, EQUIPMENT_MAINTENANCE,
+--             WELFARE_DISBURSAL, SUNDAY_SCHOOL_EXPENSE, MISSIONS_OUTREACH,
+--             ADMIN_OPERATIONAL, TRANSPORT, OTHER_EXPENSE
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS expenses;
+
+CREATE TABLE expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    church_id INTEGER NOT NULL,
+    recorded_by_user_id INTEGER NOT NULL,
+    expense_date DATE NOT NULL,
+    category TEXT NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    payment_method TEXT NOT NULL DEFAULT 'CASH',        -- CASH, MPESA, BANK_TRANSFER, CHEQUE
+    payee TEXT NOT NULL,                                -- Person, vendor, utility, or minister paid
+    voucher_ref TEXT,                                   -- Payment voucher or receipt number
+    approved_by TEXT,                                   -- Sign-off by Pastor or Treasurer
+    notes TEXT,                                         -- Purpose and description of expenditure
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (church_id) REFERENCES churches(id) ON DELETE CASCADE,
+    FOREIGN KEY (recorded_by_user_id) REFERENCES users(id) ON DELETE RESTRICT
+);
+
+-- -----------------------------------------------------------------------------
+-- PERFORMANCE & AUDIT INDEXES
+-- -----------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_giving_church_date 
+    ON giving_records (church_id, service_date);
+
+CREATE INDEX IF NOT EXISTS idx_giving_category 
+    ON giving_records (church_id, category);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_church_date 
+    ON expenses (church_id, expense_date);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_category 
+    ON expenses (church_id, category);
+
+CREATE INDEX IF NOT EXISTS idx_subs_church_status 
+    ON church_subscriptions (church_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_users_email_phone 
+    ON users (email, phone);

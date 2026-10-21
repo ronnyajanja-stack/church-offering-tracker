@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pastor Dashboard — Executive Oversight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans antialiased text-slate-800">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded">
+                {{ session.get('user_role') }} PORTAL
+            </span>
+            <h1 class="text-sm font-medium text-slate-700">
+                Logged in as <strong class="text-slate-900">{{ session.get('user_name', 'Pastor') }}</strong>
+            </h1>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <!-- Admin Dashboard Switcher -->
+            {% if session.get('user_role') == 'ADMIN' %}
+            <nav class="flex items-center gap-2 bg-slate-900 text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-700">
+                <span class="text-slate-400 font-medium">Switch:</span>
+                <a href="{{ url_for('clerk_dashboard') }}" class="hover:text-white transition">Clerk</a>
+                <span class="text-slate-600">|</span>
+                <a href="{{ url_for('treasurer_dashboard') }}" class="hover:text-white transition">Treasurer</a>
+                <span class="text-slate-600">|</span>
+                <a href="{{ url_for('pastor_dashboard') }}" class="text-indigo-400 font-semibold underline">Pastor</a>
+            </nav>
+            {% endif %}
+
+            <!-- Sign Out Button -->
+            <a href="{{ url_for('logout') }}" 
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+
+        <!-- Subscription Grace Alert Banner -->
+        {% if in_grace %}
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3 text-amber-800 text-sm">
+                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                <span>Subscription grace period active. You have <strong>{{ days_left_in_grace }} days</strong> remaining before access is restricted.</span>
+            </div>
+            <a href="{{ url_for('billing') }}" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded transition">Renew Plan</a>
+        </div>
+        {% endif %}
+
+        <!-- Executive Heading -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-indigo-600"></i>
+                    Executive Financial Oversight
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">High-level visibility into total collections, fund distributions, and stewardship health.</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                <span>Read-only executive view</span>
+            </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Cumulative Collections</p>
+                <h3 class="text-3xl font-extrabold text-slate-900 mt-2">
+                    KES {{ "{:,.2f}".format(total_collections) }}
+                </h3>
+                <span class="text-xs text-emerald-600 font-medium flex items-center gap-1 mt-1">
+                    <i class="fa-solid fa-circle-check"></i> Recorded across all funds
+                </span>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Ministry Funds</p>
+                <h3 class="text-3xl font-extrabold text-indigo-600 mt-2">
+                    {{ fund_summaries|length }}
+                </h3>
+                <span class="text-xs text-slate-400 mt-1 block">Tithe, Offerings, Building, etc.</span>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Contribution Events</p>
+                <h3 class="text-3xl font-extrabold text-slate-900 mt-2">
+                    {{ fund_summaries|sum(attribute='transaction_count') }}
+                </h3>
+                <span class="text-xs text-slate-400 mt-1 block">Logged transactions processed</span>
+            </div>
+        </div>
+
+        <!-- Analytical Breakdown -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Visual Fund Distribution Chart -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-indigo-600"></i> Fund Share Distribution
+                </h3>
+
+                {% if total_collections > 0 %}
+                <div class="relative flex items-center justify-center p-2">
+                    <canvas id="fundChart" class="max-h-64"></canvas>
+                </div>
+                {% else %}
+                <div class="py-16 text-center text-xs text-slate-400">
+                    No contributions recorded yet to generate charts.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Fund Allocation Table -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-vault text-indigo-600"></i> Fund Performance & Breakdown
+                    </h3>
+                    <span class="text-xs text-slate-400">Aggregated Totals</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-200 uppercase font-semibold text-slate-500">
+                                <th class="py-3 px-3">Ministry Fund</th>
+                                <th class="py-3 px-3 text-center">Entries</th>
+                                <th class="py-3 px-3 text-right">Total Amount</th>
+                                <th class="py-3 px-3 text-right">Share of Giving</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            {% for fund in fund_summaries %}
+                            {% set pct = (fund.total_amount / total_collections * 100) if total_collections > 0 else 0 %}
+                            <tr class="hover:bg-slate-50/75 transition">
+                                <td class="py-3.5 px-3">
+                                    <div class="font-bold text-slate-900">{{ fund.category }}</div>
+                                </td>
+                                <td class="py-3.5 px-3 text-center text-slate-600 font-medium">
+                                    {{ fund.transaction_count }}
+                                </td>
+                                <td class="py-3.5 px-3 text-right font-bold text-slate-900">
+                                    KES {{ "{:,.2f}".format(fund.total_amount) }}
+                                </td>
+                                <td class="py-3.5 px-3 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <span class="font-semibold text-slate-700">{{ "{:,.1f}".format(pct) }}%</span>
+                                        <div class="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                            <div class="bg-indigo-600 h-1.5 rounded-full" style="width: {{ pct }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="py-12 text-center text-slate-400 text-xs">
+                                    No giving records available for this ministry yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Chart.js Render Script -->
+    {% if total_collections > 0 %}
+    <script>
+        const labels = [
+            {% for f in fund_summaries %}
+                "{{ f.category }}",
+            {% endfor %}
+        ];
+
+        const dataPoints = [
+            {% for f in fund_summaries %}
+                {{ f.total_amount }},
+            {% endfor %}
+        ];
+
+        const ctx = document.getElementById('fundChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataPoints,
+                    backgroundColor: [
+                        '#4f46e5', // Indigo
+                        '#10b981', // Emerald
+                        '#f59e0b', // Amber
+                        '#06b6d4', // Cyan
+                        '#ec4899', // Pink
+                        '#8b5cf6'  // Purple
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 11 }
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    </script>
+    {% endif %}
+</body>
+</html>
