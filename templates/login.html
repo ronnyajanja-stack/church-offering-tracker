@@ -1,114 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In — Church Treasury Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Church Treasury Portal — Authentication</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4 font-sans antialiased">
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 antialiased">
 
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
-        <!-- Card Header -->
-        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-8 text-center text-white">
-            <div class="inline-flex items-center gap-2 text-indigo-100 text-xs font-semibold uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-church"></i> Church Treasury Portal
-            </div>
-            <h1 class="text-2xl font-bold tracking-tight">Sign In to Your Account</h1>
-            <p class="text-xs text-indigo-100/90 mt-1">Access member tithes, offerings, and fund treasury</p>
-        </div>
-
-        <!-- Card Body -->
-        <div class="p-8 space-y-5">
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="space-y-2">
-                        {% for category, message in messages %}
-                            <div class="p-3 text-xs rounded-lg border flex items-start gap-2.5 {% if category == 'error' %}bg-rose-50 border-rose-200 text-rose-700{% elif category == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-700{% else %}bg-blue-50 border-blue-200 text-blue-700{% endif %}">
-                                <i class="fa-solid {% if category == 'error' %}fa-circle-exclamation{% elif category == 'success' %}fa-circle-check{% else %}fa-circle-info{% endif %} mt-0.5 shrink-0"></i>
-                                <span>{{ message }}</span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
-
-            <form action="{{ url_for('login') }}" method="POST" class="space-y-4">
-                <div>
-                    <label for="identifier" class="block text-xs font-semibold text-slate-700 mb-1">Email or Phone Number</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                            <i class="fa-solid fa-envelope text-sm"></i>
-                        </span>
-                        <input type="text" id="identifier" name="email" required autocomplete="username" autofocus
-                               placeholder="pastor@church.org or 07..." 
-                               class="w-full pl-10 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition outline-none text-slate-900 placeholder:text-slate-400">
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label for="password" class="block text-xs font-semibold text-slate-700">Password</label>
-                        <a href="{{ url_for('register') }}" class="text-[11px] text-indigo-600 hover:underline">Forgot password?</a>
-                    </div>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                            <i class="fa-solid fa-lock text-sm"></i>
-                        </span>
-                        <input type="password" id="password" name="password" required autocomplete="current-password"
-                               placeholder="••••••••" 
-                               class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition outline-none text-slate-900 placeholder:text-slate-400">
-                        <button type="button" id="togglePasswordBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
-                            <i class="fa-solid fa-eye text-xs" id="eyeIcon"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <button type="submit" 
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium py-2.5 px-4 rounded-lg shadow-md hover:shadow-indigo-500/25 transition text-sm flex items-center justify-center gap-2">
-                    <span>Sign In</span>
-                    <i class="fa-solid fa-arrow-right text-xs"></i>
-                </button>
-            </form>
-
-            <div class="relative my-4">
-                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
-                <div class="relative flex justify-center text-xs text-slate-400 uppercase"><span class="bg-white px-2 tracking-wider">or</span></div>
-            </div>
-
-            <!-- Google OAuth Action -->
-            <a href="{{ url_for('google_login') }}" 
-               class="w-full border border-slate-300 hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-medium py-2.5 px-4 rounded-lg transition text-xs flex items-center justify-center gap-2.5 shadow-sm">
-                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                <span>Continue with Google</span>
-            </a>
-
-            <!-- Register Link -->
-            <p class="text-center text-xs text-slate-500 pt-2">
-                Need to register your church? 
-                <a href="{{ url_for('register') }}" class="text-indigo-600 font-semibold hover:underline">Start 30-Day Free Trial</a>
-            </p>
-        </div>
+  <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+    
+    <!-- Top Gradient Header -->
+    <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-center text-white">
+      <div class="flex items-center justify-center space-x-2 text-indigo-100 mb-2 text-xs font-semibold uppercase tracking-wider">
+        <i class="fa-solid fa-church"></i>
+        <span>Church Treasury Portal</span>
+      </div>
+      <h2 id="header-title" class="text-2xl font-bold tracking-tight">Sign In to Your Account</h2>
+      <p id="header-sub" class="text-indigo-100 text-xs mt-1">Access member tithes, offerings, and fund treasury</p>
     </div>
 
-    <script>
-        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
-        const passwordInput = document.getElementById('password');
-        const eyeIcon = document.getElementById('eyeIcon');
+    <div class="p-8">
+      
+      <!-- Tab Switcher: Sign In vs Sign Up -->
+      <div class="flex border-b border-slate-200 mb-6 text-sm font-semibold">
+        <button type="button" id="tab-login" onclick="switchMode('login')"
+          class="w-1/2 pb-3 text-center border-b-2 border-indigo-600 text-indigo-600 transition-colors">
+          Sign In
+        </button>
+        <button type="button" id="tab-signup" onclick="switchMode('signup')"
+          class="w-1/2 pb-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition-colors">
+          Sign Up / Register
+        </button>
+      </div>
 
-        togglePasswordBtn.addEventListener('click', () => {
-            const isPassword = passwordInput.type === 'password';
-            passwordInput.type = isPassword ? 'text' : 'password';
-            eyeIcon.classList.toggle('fa-eye', !isPassword);
-            eyeIcon.classList.toggle('fa-eye-slash', isPassword);
-        });
-    </script>
+      <!-- Flash / Alert Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="mb-4 text-xs p-3 rounded-lg flex items-center gap-2 {% if category == 'error' %}bg-rose-50 text-rose-700 border border-rose-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+              <i class="fa-solid {% if category == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+              <span>{{ msg }}</span>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Password Login Form -->
+      <form id="auth-form" action="/login" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Email or Phone Number</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-regular fa-envelope"></i>
+            </span>
+            <input type="text" name="identifier" required placeholder="pastor@church.org or 07..."
+              class="w-full pl-10 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all outline-none">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-semibold text-slate-700">Password</label>
+            <a id="forgot-link" href="/forgot-password" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline">Forgot password?</a>
+          </div>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="password" name="password" required placeholder="••••••••"
+              class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all outline-none">
+            <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+              <i id="toggle-icon" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn"
+          class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow-md hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 text-sm">
+          <span>Sign In</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-slate-200"></div>
+        </div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-white px-3 text-slate-400 font-semibold tracking-wider">OR</span>
+        </div>
+      </div>
+
+      <!-- Google OAuth Button -->
+      <a href="/google/login"
+        class="w-full border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 font-medium py-2.5 rounded-lg flex items-center justify-center gap-3 transition-colors text-sm shadow-sm">
+        <svg class="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span id="google-btn-text">Continue with Google</span>
+      </a>
+
+      <!-- Footer Prompt -->
+      <p id="footer-text" class="text-center text-xs text-slate-500 mt-6">
+        Need to register your church? 
+        <a href="/register" class="text-indigo-600 hover:underline font-semibold">Start 30-Day Free Trial</a>
+      </p>
+
+    </div>
+  </div>
+
+  <script>
+    function togglePasswordVisibility() {
+      const pwd = document.getElementById('password');
+      const icon = document.getElementById('toggle-icon');
+      if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        pwd.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+
+    function switchMode(mode) {
+      const tabLogin = document.getElementById('tab-login');
+      const tabSignup = document.getElementById('tab-signup');
+      const headerTitle = document.getElementById('header-title');
+      const headerSub = document.getElementById('header-sub');
+      const authForm = document.getElementById('auth-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const forgotLink = document.getElementById('forgot-link');
+      const googleBtnText = document.getElementById('google-btn-text');
+      const footerText = document.getElementById('footer-text');
+
+      if (mode === 'signup') {
+        // Tab styling
+        tabSignup.className = "w-1/2 pb-3 text-center border-b-2 border-indigo-600 text-indigo-600 transition-colors";
+        tabLogin.className = "w-1/2 pb-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition-colors";
+
+        // Content updates
+        headerTitle.innerText = "Register Your Church";
+        headerSub.innerText = "Start your 30-day free trial portal access";
+        authForm.action = "/register";
+        submitBtn.innerHTML = `<span>Create Account</span><i class="fa-solid fa-arrow-right text-xs"></i>`;
+        forgotLink.style.display = "none";
+        googleBtnText.innerText = "Sign Up with Google";
+        footerText.innerHTML = `Already have an account? <a href="#" onclick="switchMode('login'); return false;" class="text-indigo-600 hover:underline font-semibold">Sign In</a>`;
+      } else {
+        // Tab styling
+        tabLogin.className = "w-1/2 pb-3 text-center border-b-2 border-indigo-600 text-indigo-600 transition-colors";
+        tabSignup.className = "w-1/2 pb-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition-colors";
+
+        // Content updates
+        headerTitle.innerText = "Sign In to Your Account";
+        headerSub.innerText = "Access member tithes, offerings, and fund treasury";
+        authForm.action = "/login";
+        submitBtn.innerHTML = `<span>Sign In</span><i class="fa-solid fa-arrow-right text-xs"></i>`;
+        forgotLink.style.display = "inline";
+        googleBtnText.innerText = "Continue with Google";
+        footerText.innerHTML = `Need to register your church? <a href="/register" class="text-indigo-600 hover:underline font-semibold">Start 30-Day Free Trial</a>`;
+      }
+    }
+  </script>
 </body>
 </html>
