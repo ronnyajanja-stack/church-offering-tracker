@@ -15,12 +15,22 @@
             <div class="inline-flex items-center gap-2 text-indigo-100 text-xs font-semibold uppercase tracking-wider mb-2">
                 <i class="fa-solid fa-church"></i> Church Treasury Portal
             </div>
-            <h1 class="text-2xl font-bold tracking-tight">Sign In to Your Account</h1>
-            <p class="text-xs text-indigo-100/90 mt-1">Access member tithes, offerings, and fund treasury</p>
+            <h1 id="header-title" class="text-2xl font-bold tracking-tight">Sign In to Your Account</h1>
+            <p id="header-sub" class="text-xs text-indigo-100/90 mt-1">Access member tithes, offerings, and fund treasury</p>
         </div>
 
         <!-- Card Body -->
         <div class="p-8 space-y-5">
+            <!-- Tabs: Sign In vs Sign Up -->
+            <div class="flex border-b border-slate-200 text-sm font-semibold">
+                <a href="{{ url_for('login') }}" class="w-1/2 pb-3 text-center border-b-2 border-indigo-600 text-indigo-600">
+                    Sign In
+                </a>
+                <a href="{{ url_for('register') }}" class="w-1/2 pb-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-700">
+                    Sign Up / Register
+                </a>
+            </div>
+
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
